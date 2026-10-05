@@ -27,3 +27,29 @@ export function validatePayment(draft: PaymentDraft, balanceCents: number): Erro
   }
   return errors;
 }
+
+export interface SaleDraft {
+  patientId: string;
+  frameId: string;
+  quantity: string;
+}
+
+export const EMPTY_SALE: SaleDraft = { patientId: '', frameId: '', quantity: '1' };
+
+const MAX_QUANTITY = 10;
+
+/** A sale needs a chosen patient, a chosen frame, and a sane quantity (the server has the final word on stock). */
+export function validateSale(draft: SaleDraft): Errors {
+  const errors: Errors = {};
+  if (!draft.patientId) {
+    errors.patientId = 'Busca y selecciona un paciente';
+  }
+  if (!draft.frameId) {
+    errors.frameId = 'Busca y selecciona una montura';
+  }
+  const quantity = Number(draft.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QUANTITY) {
+    errors.quantity = `Debe ser un número entero entre 1 y ${MAX_QUANTITY}`;
+  }
+  return errors;
+}
