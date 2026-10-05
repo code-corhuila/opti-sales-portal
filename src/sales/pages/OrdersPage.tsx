@@ -26,7 +26,17 @@ export function OrdersPage({ shell }: { shell: ShellContext }): ReactNode {
 
   return (
     <>
-      <ui.PageHeader title="Órdenes de trabajo" subtitle="Las órdenes se abren desde el flujo de venta (workflow)." />
+      <ui.PageHeader
+        title="Órdenes de trabajo"
+        subtitle="Las órdenes se abren desde el flujo de venta (workflow)."
+        actions={
+          shell.can('ADMIN', 'SELLER') ? (
+            <Link className="btn" to="new">
+              Nueva venta
+            </Link>
+          ) : null
+        }
+      />
       <div className="toolbar">
         <ui.SelectField id="order-status" label="Estado" value={status} placeholder="Todos"
           onChange={(value) => update({ status: value, page: '' })} options={STATUS_OPTIONS} />

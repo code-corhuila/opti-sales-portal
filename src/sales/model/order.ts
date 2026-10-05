@@ -103,3 +103,59 @@ export function pesosToCents(text: string): number {
   const centsPart = (decimals + '00').slice(0, 2);
   return Number(pesos) * 100 + Number(centsPart);
 }
+
+/** A sale is opened through the workflow's place-order saga, not directly against this domain. */
+export type SagaStatus = 'RUNNING' | 'COMPENSATING' | 'COMPLETED' | 'COMPENSATED' | 'FAILED';
+
+export type FailureReason =
+  | 'PATIENT_NOT_FOUND'
+  | 'PATIENT_NOT_ACTIVE'
+  | 'FRAME_NOT_FOUND'
+  | 'INSUFFICIENT_STOCK'
+  | 'ORDER_NOT_FOUND'
+  | 'ORDER_NOT_CANCELLABLE'
+  | 'REJECTED'
+  | 'PARTICIPANT_UNAVAILABLE'
+  | 'COMPENSATION_FAILED';
+
+export interface SagaResponse {
+  id: string;
+  type: string;
+  status: SagaStatus;
+  orderId: string | null;
+  completedSteps: string[];
+  failedStep: string | null;
+  failureReason: FailureReason | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const FAILURE_MESSAGE: Record<FailureReason, string> = {
+  PATIENT_NOT_FOUND: 'No encontramos ese paciente.',
+  PATIENT_NOT_ACTIVE: 'El paciente no está activo.',
+  FRAME_NOT_FOUND: 'No encontramos esa montura.',
+  INSUFFICIENT_STOCK: 'No hay stock suficiente de esa montura.',
+  ORDER_NOT_FOUND: 'La orden no existe.',
+  ORDER_NOT_CANCELLABLE: 'La orden no se puede cancelar en su estado actual.',
+  REJECTED: 'La venta fue rechazada.',
+  PARTICIPANT_UNAVAILABLE: 'Un servicio no respondió a tiempo. Intenta de nuevo en unos segundos.',
+  COMPENSATION_FAILED: 'Ocurrió un problema deshaciendo la operación. Contacta al administrador.',
+};
+
+/** The slice of a patient a seller needs to pick one for a sale. */
+export interface PatientOption {
+  id: string;
+  documentNumber: string;
+  fullName: string;
+  status: string;
+}
+
+/** The slice of a frame a seller needs to pick one for a sale. */
+export interface FrameOption {
+  id: string;
+  sku: string;
+  brand: string;
+  model: string;
+  salePriceCents: number;
+  stock: number;
+}
