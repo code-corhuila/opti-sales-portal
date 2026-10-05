@@ -1,5 +1,5 @@
 import type { ApiClient, Page } from '../../shell-contract';
-import type { Invoice, Payment, WorkOrder, WorkOrderStatus } from '../model/order';
+import type { FrameOption, Invoice, Payment, PatientOption, SagaResponse, WorkOrder, WorkOrderStatus } from '../model/order';
 
 export interface OrderQuery {
   status?: WorkOrderStatus | '';
@@ -31,6 +31,18 @@ export function salesApi(api: ApiClient) {
 
     pay: (invoiceId: string, amountCents: number, method: string, reference: string | null, idempotencyKey: string) =>
       api.post<{ id: string }>(`/api/v1/invoices/${invoiceId}/payments`, { amountCents, method, reference }, { idempotencyKey }),
+
+    /** Up to 5 active patients matching the text, to pick one for a sale (HU: register a sale). */
+    searchPatients: (q: string, signal?: AbortSignal) =>
+      api.get<Page<PatientOption>>('/api/v1/patients', { query: { q, limit: 5 }, ...(signal ? { signal } : {}) }),
+
+    /** Up to 5 active frames matching the text, to pick one for a sale. */
+    searchFrames: (q: string, signal?: AbortSignal) =>
+      api.get<Page<FrameOption>>('/api/v1/frames', { query: { q, status: 'ACTIVE', limit: 5 }, ...(signal ? { signal } : {}) }),
+
+    /** Opens a sale: reserves the frame's stock and opens the work order and its invoice (the place-order saga). */
+    placeOrder: (patientId: string, frameId: string, quantity: number, idempotencyKey: string) =>
+      api.post<SagaResponse>('/api/v1/sagas/place-order', { patientId, frameId, quantity }, { idempotencyKey }),
   };
 }
 
