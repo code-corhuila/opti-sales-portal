@@ -45,8 +45,14 @@ export function PaymentForm({ shell, invoiceId, balanceCents, onPaid }: {
           hint={`Saldo pendiente: ${formatCents(balanceCents)}`} />
         <ui.SelectField id="payment-method" label="Medio de pago" required value={draft.method} placeholder="Elige…"
           onChange={(v) => setDraft((d) => ({ ...d, method: v }))} options={PAYMENT_METHODS} error={errors.method} />
-        <ui.TextField id="payment-reference" label="Referencia (opcional)" value={draft.reference}
-          onChange={(v) => setDraft((d) => ({ ...d, reference: v }))} error={errors.reference} maxLength={100} />
+        {draft.method === 'NEQUI' ? (
+          <ui.TextField id="payment-reference" label="Celular Nequi del cliente" required type="tel" inputMode="tel"
+            value={draft.reference} onChange={(v) => setDraft((d) => ({ ...d, reference: v }))} error={errors.reference}
+            maxLength={10} hint="Se le enviará la solicitud de pago a la app Nequi" />
+        ) : (
+          <ui.TextField id="payment-reference" label="Referencia (opcional)" value={draft.reference}
+            onChange={(v) => setDraft((d) => ({ ...d, reference: v }))} error={errors.reference} maxLength={100} />
+        )}
       </div>
       <div className="actions">
         <button type="submit" className="btn" disabled={pending || balanceCents <= 0}>
