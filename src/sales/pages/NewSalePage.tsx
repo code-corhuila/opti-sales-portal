@@ -10,7 +10,7 @@ export function NewSalePage({ shell }: { shell: ShellContext }): ReactNode {
     <>
       <shell.ui.PageHeader
         title="Nueva venta"
-        subtitle="Busca el paciente y la montura; la orden y la factura se abren automáticamente."
+        subtitle="Sigue los pasos: paciente, producto y cantidad; la orden y la factura se abren automáticamente."
         actions={
           <Link className="btn btn-quiet" to="..">
             Volver
