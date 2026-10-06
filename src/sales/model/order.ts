@@ -162,6 +162,14 @@ export interface PatientOption {
   status: string;
 }
 
+/** The slice of a patient shown on the order detail header (HU-21): just enough to identify them. */
+export interface OrderPatient {
+  id: string;
+  documentNumber: string;
+  fullName: string;
+  phone: string;
+}
+
 /** The slice of a frame a seller needs to pick one for a sale. */
 export interface FrameOption {
   id: string;
