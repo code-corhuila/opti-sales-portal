@@ -4,6 +4,18 @@ import type {
   ProductType, SagaResponse, WorkOrder, WorkOrderStatus,
 } from '../model/order';
 
+/** One day of revenue, as returned by GET /api/v1/reports/sales-timeseries (HU-24). */
+export interface DailySales {
+  date: string;
+  totalCents: number;
+}
+
+/** One status bucket, as returned by GET /api/v1/reports/orders-by-status (HU-24). */
+export interface StatusCount {
+  status: WorkOrderStatus;
+  count: number;
+}
+
 export interface OrderQuery {
   status?: WorkOrderStatus | '';
   /** Simple match on the order number (HU-21); the API does not join against the patient's name. */
@@ -68,6 +80,14 @@ export function salesApi(api: ApiClient) {
     /** Opens a sale: reserves the chosen product's stock and opens the work order and its invoice (the place-order saga). */
     placeOrder: (patientId: string, productType: ProductType, productId: string, quantity: number, idempotencyKey: string) =>
       api.post<SagaResponse>('/api/v1/sagas/place-order', { patientId, productType, productId, quantity }, { idempotencyKey }),
+
+    /** Daily revenue of the current month, zero-filled from day 1 through today (HU-24, ADMIN only). */
+    salesTimeseries: (signal?: AbortSignal) =>
+      api.get<DailySales[]>('/api/v1/reports/sales-timeseries', signal ? { signal } : {}),
+
+    /** Count of work orders per status, zero-filled for unused statuses (HU-24, ADMIN only). */
+    ordersByStatus: (signal?: AbortSignal) =>
+      api.get<StatusCount[]>('/api/v1/reports/orders-by-status', signal ? { signal } : {}),
   };
 }
 
