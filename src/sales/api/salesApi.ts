@@ -1,5 +1,8 @@
 import type { ApiClient, Page } from '../../shell-contract';
-import type { FrameOption, Invoice, Payment, PatientOption, SagaResponse, WorkOrder, WorkOrderStatus } from '../model/order';
+import type {
+  AccessoryOption, FrameOption, Invoice, LensOption, LiquidOption, Payment, PatientOption, ProductType,
+  SagaResponse, WorkOrder, WorkOrderStatus,
+} from '../model/order';
 
 export interface OrderQuery {
   status?: WorkOrderStatus | '';
@@ -40,9 +43,21 @@ export function salesApi(api: ApiClient) {
     searchFrames: (q: string, signal?: AbortSignal) =>
       api.get<Page<FrameOption>>('/api/v1/frames', { query: { q, status: 'ACTIVE', limit: 5 }, ...(signal ? { signal } : {}) }),
 
-    /** Opens a sale: reserves the frame's stock and opens the work order and its invoice (the place-order saga). */
-    placeOrder: (patientId: string, frameId: string, quantity: number, idempotencyKey: string) =>
-      api.post<SagaResponse>('/api/v1/sagas/place-order', { patientId, frameId, quantity }, { idempotencyKey }),
+    /** Up to 5 active lenses matching the text, to pick one for a sale (HU-25). */
+    searchLenses: (q: string, signal?: AbortSignal) =>
+      api.get<Page<LensOption>>('/api/v1/lenses', { query: { q, status: 'ACTIVE', limit: 5 }, ...(signal ? { signal } : {}) }),
+
+    /** Up to 5 active accessories matching the text, to pick one for a sale (HU-25). */
+    searchAccessories: (q: string, signal?: AbortSignal) =>
+      api.get<Page<AccessoryOption>>('/api/v1/accessories', { query: { q, status: 'ACTIVE', limit: 5 }, ...(signal ? { signal } : {}) }),
+
+    /** Up to 5 active liquids matching the text, to pick one for a sale (HU-25). */
+    searchLiquids: (q: string, signal?: AbortSignal) =>
+      api.get<Page<LiquidOption>>('/api/v1/liquids', { query: { q, status: 'ACTIVE', limit: 5 }, ...(signal ? { signal } : {}) }),
+
+    /** Opens a sale: reserves the chosen product's stock and opens the work order and its invoice (the place-order saga). */
+    placeOrder: (patientId: string, productType: ProductType, productId: string, quantity: number, idempotencyKey: string) =>
+      api.post<SagaResponse>('/api/v1/sagas/place-order', { patientId, productType, productId, quantity }, { idempotencyKey }),
   };
 }
 
