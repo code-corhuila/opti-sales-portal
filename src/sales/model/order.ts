@@ -77,6 +77,19 @@ export const STATUS_TONE: Record<WorkOrderStatus, 'neutral' | 'info' | 'success'
   CANCELLED: 'danger',
 };
 
+/**
+ * The actual color behind each `ui.Badge` tone (see opti-front's styles.css `.badge-*` rules),
+ * as CSS variables so charts (HU-24 reports) pick up the same palette — including dark mode —
+ * instead of a separate, hard-coded set of colors.
+ */
+export const TONE_COLOR: Record<'neutral' | 'info' | 'success' | 'warning' | 'danger', string> = {
+  neutral: 'var(--text-soft)',
+  info: 'var(--info)',
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  danger: 'var(--danger)',
+};
+
 export const NEXT_STATUS: Partial<Record<WorkOrderStatus, WorkOrderStatus>> = {
   APPROVED: 'IN_LABORATORY',
   IN_LABORATORY: 'READY',
