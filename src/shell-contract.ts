@@ -128,7 +128,24 @@ export interface SharedUi {
   PageHeader: (props: { title: string; subtitle?: string; actions?: ReactNode }) => ReactNode;
   Pager: (props: { meta: PageMeta; onPage: (page: number) => void }) => ReactNode;
   Banner: (props: { kind: 'error' | 'info' | 'success'; title?: string; children: ReactNode }) => ReactNode;
-  Badge: (props: { tone: 'neutral' | 'info' | 'success' | 'warning' | 'danger'; children: ReactNode }) => ReactNode;
+  Badge: (props: { tone: 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'purple'; children: ReactNode }) => ReactNode;
+  /** A colored circle with a person's initials; the color is picked deterministically from the name. */
+  Avatar: (props: { name: string }) => ReactNode;
+  /** A metric card with a colored icon badge, a label, a big value and an optional hint. */
+  StatCard: (props: {
+    icon: ReactNode;
+    tone: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'purple';
+    label: string;
+    value: ReactNode;
+    hint?: ReactNode;
+  }) => ReactNode;
+  /** Icon + title + short description, for a form section's heading. */
+  SectionHeading: (props: {
+    icon: ReactNode;
+    tone: 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'purple';
+    title: string;
+    description?: string;
+  }) => ReactNode;
   /** Loads data; a newer request replaces the previous one so a slow answer never overwrites a fast one. */
   useLoad: <T>(loader: (signal: AbortSignal) => Promise<T>, deps: readonly unknown[]) => {
     state: LoadState<T>;
