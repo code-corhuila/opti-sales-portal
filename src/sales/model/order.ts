@@ -3,10 +3,20 @@
 export type WorkOrderStatus = 'QUOTATION' | 'APPROVED' | 'IN_LABORATORY' | 'READY' | 'DELIVERED' | 'CANCELLED';
 export type InvoiceStatus = 'PENDING' | 'PARTIAL' | 'PAID' | 'VOID';
 export type PaymentMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'PSE' | 'NEQUI' | 'DAVIPLATA' | 'OTHER';
+/** Which products-domain catalog a work order line (or a sale in progress) points to (HU-25). */
+export type ProductType = 'FRAME' | 'LENS' | 'ACCESSORY' | 'LIQUID';
+
+export const PRODUCT_TYPES: { value: ProductType; label: string }[] = [
+  { value: 'FRAME', label: 'Montura' },
+  { value: 'LENS', label: 'Lente' },
+  { value: 'ACCESSORY', label: 'Accesorio' },
+  { value: 'LIQUID', label: 'Líquido' },
+];
 
 export interface WorkOrderItem {
   id: string;
-  frameId: string;
+  productType: ProductType;
+  productId: string;
   reservationId: string;
   sku: string;
   description: string;
@@ -133,8 +143,10 @@ export interface SagaResponse {
 export const FAILURE_MESSAGE: Record<FailureReason, string> = {
   PATIENT_NOT_FOUND: 'No encontramos ese paciente.',
   PATIENT_NOT_ACTIVE: 'El paciente no está activo.',
-  FRAME_NOT_FOUND: 'No encontramos esa montura.',
-  INSUFFICIENT_STOCK: 'No hay stock suficiente de esa montura.',
+  // Reused for any product type (HU-25): the workflow's FailureReason enum still names it after
+  // the original frame-only sale, but it now fires for a lens/accessory/liquid just as well.
+  FRAME_NOT_FOUND: 'No encontramos ese producto.',
+  INSUFFICIENT_STOCK: 'No hay stock suficiente de ese producto.',
   ORDER_NOT_FOUND: 'La orden no existe.',
   ORDER_NOT_CANCELLABLE: 'La orden no se puede cancelar en su estado actual.',
   REJECTED: 'La venta fue rechazada.',
@@ -156,6 +168,36 @@ export interface FrameOption {
   sku: string;
   brand: string;
   model: string;
+  salePriceCents: number;
+  stock: number;
+}
+
+/** The slice of a lens a seller needs to pick one for a sale. */
+export interface LensOption {
+  id: string;
+  sku: string;
+  brand: string;
+  lensType: string;
+  salePriceCents: number;
+  stock: number;
+}
+
+/** The slice of an accessory a seller needs to pick one for a sale. */
+export interface AccessoryOption {
+  id: string;
+  sku: string;
+  brand: string | null;
+  category: string;
+  salePriceCents: number;
+  stock: number;
+}
+
+/** The slice of a liquid a seller needs to pick one for a sale. */
+export interface LiquidOption {
+  id: string;
+  sku: string;
+  brand: string;
+  volumeMl: number;
   salePriceCents: number;
   stock: number;
 }
