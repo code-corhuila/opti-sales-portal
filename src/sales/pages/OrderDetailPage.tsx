@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import type { ShellContext } from '../../shell-contract';
 import { salesApi } from '../api/salesApi';
 import { OrderTimeline } from '../components/OrderTimeline';
+import { PatientHeader } from '../components/PatientHeader';
 import { PaymentForm } from '../components/PaymentForm';
 import { formatCents, INVOICE_STATUS_LABEL, NEXT_STATUS, PAYMENT_METHODS, STATUS_LABEL, STATUS_TONE } from '../model/order';
 
@@ -116,6 +117,7 @@ export function OrderDetailPage({ shell }: { shell: ShellContext }): ReactNode {
       <ui.DataState state={state} onRetry={reload}>
         {(order) => (
           <>
+            <PatientHeader shell={shell} patientId={order.patientId} />
             <section className="card">
               <h2>
                 {order.number} <ui.Badge tone={STATUS_TONE[order.status]}>{STATUS_LABEL[order.status]}</ui.Badge>
