@@ -1,11 +1,13 @@
 import type { ApiClient, Page } from '../../shell-contract';
 import type {
-  AccessoryOption, FrameOption, Invoice, LensOption, LiquidOption, Payment, PatientOption, ProductType,
-  SagaResponse, WorkOrder, WorkOrderStatus,
+  AccessoryOption, FrameOption, Invoice, LensOption, LiquidOption, OrderPatient, Payment, PatientOption,
+  ProductType, SagaResponse, WorkOrder, WorkOrderStatus,
 } from '../model/order';
 
 export interface OrderQuery {
   status?: WorkOrderStatus | '';
+  /** Simple match on the order number (HU-21); the API does not join against the patient's name. */
+  q?: string;
   page?: number;
   limit?: number;
 }
@@ -14,11 +16,19 @@ export function salesApi(api: ApiClient) {
   return {
     listOrders: (query: OrderQuery, signal?: AbortSignal) =>
       api.get<Page<WorkOrder>>('/api/v1/work-orders', {
-        query: { status: query.status, page: query.page, limit: query.limit ?? 10 },
+        query: { status: query.status, q: query.q, page: query.page, limit: query.limit ?? 10 },
         ...(signal ? { signal } : {}),
       }),
 
     getOrder: (id: string, signal?: AbortSignal) => api.get<WorkOrder>(`/api/v1/work-orders/${id}`, signal ? { signal } : {}),
+
+    /**
+     * The patient's header data for the order detail (HU-21): name, document and phone. The order
+     * only carries `patientId`, so this hits the customers domain's own patient-detail endpoint
+     * (already used by other portals, e.g. opti-customers-portal's `customersApi.get`).
+     */
+    getPatient: (id: string, signal?: AbortSignal) =>
+      api.get<OrderPatient>(`/api/v1/patients/${id}`, signal ? { signal } : {}),
 
     approve: (id: string) => api.post<WorkOrder>(`/api/v1/work-orders/${id}/approve`),
 
