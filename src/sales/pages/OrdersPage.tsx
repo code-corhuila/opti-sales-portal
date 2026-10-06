@@ -6,6 +6,48 @@ import { formatCents, STATUS_LABEL, STATUS_TONE, type WorkOrderStatus } from '..
 
 const STATUS_OPTIONS = (Object.keys(STATUS_LABEL) as WorkOrderStatus[]).map((value) => ({ value, label: STATUS_LABEL[value] }));
 
+const QUOTATION_ICON = (
+  <>
+    <rect x="4.5" y="3.5" width="11" height="14" rx="1.5" />
+    <path d="M7.5 3.5V3a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v.5M7 9h6M7 12.5h6" />
+  </>
+);
+
+const IN_PROCESS_ICON = (
+  <>
+    <circle cx="10" cy="10" r="7" />
+    <path d="M10 6v4l3 2" />
+  </>
+);
+
+const LAB_ICON = (
+  <>
+    <path d="M8 2.5h4M8.5 2.5v4.3L5 15a1.5 1.5 0 0 0 1.4 2h7.2a1.5 1.5 0 0 0 1.4-2l-3.5-8.2V2.5" />
+    <path d="M6.5 11.5h7" />
+  </>
+);
+
+const DELIVERED_ICON = (
+  <>
+    <path d="M3 6.5 10 3l7 3.5-7 3.5-7-3.5Z" />
+    <path d="M3 6.5V14l7 3.5 7-3.5V6.5" />
+  </>
+);
+
+const CARD_ICON = {
+  Cotizaciones: QUOTATION_ICON,
+  'En proceso': IN_PROCESS_ICON,
+  'En laboratorio': LAB_ICON,
+  Entregadas: DELIVERED_ICON,
+} satisfies Record<string, ReactNode>;
+
+const CARD_TONE = {
+  Cotizaciones: 'primary',
+  'En proceso': 'warning',
+  'En laboratorio': 'purple',
+  Entregadas: 'success',
+} satisfies Record<keyof typeof CARD_ICON, 'primary' | 'warning' | 'purple' | 'success'>;
+
 /**
  * The four summary cards above the filter (HU-21). Each one reuses the same pattern as this
  * domain's dashboard card (../Summary.tsx): a `listOrders({ status, limit: 1 })` call that only
@@ -32,7 +74,7 @@ function OrderSummaryCards({ shell, api }: { shell: ShellContext; api: SalesApi 
   const deliveredTotal = delivered.state.status === 'ready' ? delivered.state.data.meta.total : null;
   const inProcessTotal = approvedTotal !== null && inLaboratoryTotal !== null ? approvedTotal + inLaboratoryTotal : null;
 
-  const cards: { title: string; value: number | null }[] = [
+  const cards: { title: keyof typeof CARD_ICON; value: number | null }[] = [
     { title: 'Cotizaciones', value: quotationTotal },
     { title: 'En proceso', value: inProcessTotal },
     { title: 'En laboratorio', value: inLaboratoryTotal },
@@ -42,10 +84,8 @@ function OrderSummaryCards({ shell, api }: { shell: ShellContext; api: SalesApi 
   return (
     <div className="summary-grid">
       {cards.map((card) => (
-        <div className="summary-card" key={card.title}>
-          <h2>{card.title}</h2>
-          <div className={card.value === 0 ? 'metric calm' : 'metric'}>{card.value ?? '—'}</div>
-        </div>
+        <ui.StatCard key={card.title} icon={CARD_ICON[card.title]} tone={CARD_TONE[card.title]}
+          label={card.title} value={card.value ?? '—'} />
       ))}
     </div>
   );
