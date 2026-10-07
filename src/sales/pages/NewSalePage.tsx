@@ -18,7 +18,7 @@ export function NewSalePage({ shell }: { shell: ShellContext }): ReactNode {
         }
       />
       <div className="card">
-        <SaleForm shell={shell} onPlaced={(id) => navigate(`../${id}`)} />
+        <SaleForm shell={shell} onPlaced={(id) => navigate(`/sales/${id}`, { replace: true })} />
       </div>
     </>
   );

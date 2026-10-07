@@ -1,8 +1,10 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { useSaleOperation } from './useSaleOperation';
 import type { ShellContext } from '../../shell-contract';
 import { salesApi } from '../api/salesApi';
 import {
-  FAILURE_MESSAGE, PRODUCT_TYPES, formatCents,
+  PRODUCT_TYPES, formatCents,
   type AccessoryOption, type FrameOption, type LensOption, type LiquidOption, type PatientOption, type ProductType,
 } from '../model/order';
 import { EMPTY_SALE, validateSale, type SaleDraft } from '../model/validation';
@@ -51,13 +53,12 @@ export function SaleForm({ shell, onPlaced }: { shell: ShellContext; onPlaced: (
   const [step, setStep] = useState(1);
   const [stepAttempted, setStepAttempted] = useState(false);
   const [attempted, setAttempted] = useState(false);
-  const [info, setInfo] = useState<string | null>(null);
   const clientErrors = validateSale(draft);
-  const { submit, pending, error, fieldErrors } = ui.useSubmit(
-    (key) => api.placeOrder(draft.patientId, draft.productType as ProductType, draft.productId, Number(draft.quantity), key),
-    JSON.stringify(draft),
-  );
-  const errors = { ...((attempted || stepAttempted) ? clientErrors : {}), ...fieldErrors };
+  const operation = useSaleOperation(api, shell.user.id, (id) => {
+    shell.notify('Venta registrada', 'success');
+    onPlaced(id);
+  });
+  const errors = (attempted || stepAttempted) ? clientErrors : {};
 
   const selectedProduct: ProductOption | null = frame ?? lens ?? accessory ?? liquid;
   const productTypeLabel = PRODUCT_TYPES.find((t) => t.value === draft.productType)?.label ?? '';
@@ -103,35 +104,20 @@ export function SaleForm({ shell, onPlaced }: { shell: ShellContext; onPlaced: (
 
   async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    if (step !== LAST_STEP || submitter?.getAttribute('data-sale-action') !== 'confirm') return;
     setAttempted(true);
-    setInfo(null);
-    if (Object.keys(clientErrors).length > 0) {
-      return;
-    }
-    const saga = await submit();
-    if (!saga) {
-      return;
-    }
-    if (saga.status === 'COMPLETED' && saga.orderId) {
-      shell.notify('Venta registrada', 'success');
-      onPlaced(saga.orderId);
-      return;
-    }
-    if (saga.status === 'RUNNING' || saga.status === 'COMPENSATING') {
-      setInfo('La venta se está procesando. Consulta en unos segundos si quedó registrada.');
-      return;
-    }
-    shell.notify(saga.failureReason ? FAILURE_MESSAGE[saga.failureReason] : 'No se pudo completar la venta', 'error');
+    if (operation.locked || Object.keys(clientErrors).length > 0) return;
+    operation.start(draft);
   }
 
   return (
     <form onSubmit={(event) => void onSubmit(event)} noValidate aria-label="Nueva venta">
-      {error && Object.keys(fieldErrors).length === 0 ? (
-        <ui.Banner kind="error" title="No se pudo registrar la venta">
-          {error.userMessage}
-        </ui.Banner>
-      ) : null}
-      {info ? <ui.Banner kind="info">{info}</ui.Banner> : null}
+      {operation.message ? <ui.Banner kind={operation.terminal ? 'error' : 'info'}>{operation.message}</ui.Banner> : null}
+      {operation.locked ? <div role="status"><h3>{operation.terminal ? 'Solicitud finalizada' : 'Procesando venta'}</h3>
+        <p>{operation.terminal ? 'Puedes revisar tus órdenes antes de iniciar otra venta.' : 'Los pasos están bloqueados mientras confirmamos el resultado.'}</p>
+        <Link className="btn btn-quiet" to="/sales">Ver órdenes</Link>
+      </div> : <>
       <SaleWizardStepper current={step} />
       {step === 1 ? (
         <SearchPicker
@@ -284,20 +270,21 @@ export function SaleForm({ shell, onPlaced }: { shell: ShellContext; onPlaced: (
       ) : null}
       <div className="actions" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
         {step > 1 ? (
-          <button type="button" className="btn btn-quiet" onClick={goBack} disabled={pending}>
+          <button type="button" className="btn btn-quiet" onClick={goBack} disabled={operation.locked}>
             Atrás
           </button>
         ) : null}
         {step < LAST_STEP ? (
-          <button type="button" className="btn" onClick={goNext}>
+          <button key="next-step" type="button" className="btn" onClick={(event) => { event.preventDefault(); goNext(); }}>
             Siguiente
           </button>
         ) : (
-          <button type="submit" className="btn" disabled={pending}>
-            {pending ? 'Procesando…' : 'Registrar venta'}
+          <button key="confirm-sale" data-sale-action="confirm" type="submit" className="btn" disabled={operation.locked}>
+            Registrar venta
           </button>
         )}
       </div>
+      </>}
     </form>
   );
 }

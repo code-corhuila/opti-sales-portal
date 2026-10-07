@@ -48,7 +48,7 @@ export function PaymentForm({ shell, invoiceId, balanceCents, onPaid }: {
         {draft.method === 'NEQUI' ? (
           <ui.TextField id="payment-reference" label="Celular Nequi del cliente" required type="tel" inputMode="tel"
             value={draft.reference} onChange={(v) => setDraft((d) => ({ ...d, reference: v }))} error={errors.reference}
-            maxLength={10} hint="Se le enviará la solicitud de pago a la app Nequi" />
+            maxLength={10} hint="La solicitud a Nequi depende del servicio de pagos habilitado. Los pagos de prueba se identifican como simulación en el comprobante." />
         ) : (
           <ui.TextField id="payment-reference" label="Referencia (opcional)" value={draft.reference}
             onChange={(v) => setDraft((d) => ({ ...d, reference: v }))} error={errors.reference} maxLength={100} />
