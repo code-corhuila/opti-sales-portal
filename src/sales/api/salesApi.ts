@@ -26,6 +26,32 @@ export interface OrderQuery {
 
 export function salesApi(api: ApiClient) {
   return {
+    /** Read each bounded page so totals never silently describe only the first page. */
+    billingOverview: async (signal: AbortSignal) => {
+      const invoices: Invoice[] = [];
+      let pageNumber = 1;
+      let totalPages = 1;
+      do {
+        const result = await api.get<Page<Invoice>>('/api/v1/invoices', { query: { page: pageNumber, limit: 100 }, signal });
+        invoices.push(...result.data);
+        totalPages = result.meta.totalPages;
+        pageNumber += 1;
+      } while (pageNumber <= totalPages);
+      const patients: Record<string, OrderPatient> = {};
+      const ids = [...new Set(invoices.map((invoice) => invoice.patientId))];
+      // Limit concurrency to avoid flooding the customers service.
+      for (let offset = 0; offset < ids.length; offset += 5) {
+        await Promise.all(ids.slice(offset, offset + 5).map(async (id) => {
+          try {
+            patients[id] = await api.get<OrderPatient>(`/api/v1/patients/${id}`, { signal });
+          } catch (error) {
+            if (signal.aborted) throw error;
+            // An unavailable patient must not hide their invoice or its outstanding balance.
+          }
+        }));
+      }
+      return { invoices, patients };
+    },
     listOrders: (query: OrderQuery, signal?: AbortSignal) =>
       api.get<Page<WorkOrder>>('/api/v1/work-orders', {
         query: { status: query.status, q: query.q, page: query.page, limit: query.limit ?? 10 },
@@ -45,6 +71,22 @@ export function salesApi(api: ApiClient) {
     approve: (id: string) => api.post<WorkOrder>(`/api/v1/work-orders/${id}/approve`),
 
     advance: (id: string) => api.post<WorkOrder>(`/api/v1/work-orders/${id}/advance`),
+
+    cancel: (orderId: string, idempotencyKey: string) =>
+      api.post<SagaResponse>('/api/v1/sagas/cancel-order', { orderId }, { idempotencyKey }),
+
+    reportOrders: async (date: string, signal: AbortSignal) => {
+      const orders: WorkOrder[] = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const result = await api.get<Page<WorkOrder>>('/api/v1/work-orders', { query: { page, limit: 100 }, signal });
+        orders.push(...result.data.filter((order) => order.status !== 'CANCELLED' && order.createdAt.slice(0, 10) === date));
+        totalPages = result.meta.totalPages;
+        page += 1;
+      } while (page <= totalPages);
+      return orders;
+    },
 
     invoiceOf: async (workOrderId: string, signal?: AbortSignal): Promise<Invoice | null> => {
       const page = await api.get<Page<Invoice>>('/api/v1/invoices', { query: { workOrderId, limit: 1 }, ...(signal ? { signal } : {}) });
@@ -78,8 +120,11 @@ export function salesApi(api: ApiClient) {
       api.get<Page<LiquidOption>>('/api/v1/liquids', { query: { q, status: 'ACTIVE', limit: 5 }, ...(signal ? { signal } : {}) }),
 
     /** Opens a sale: reserves the chosen product's stock and opens the work order and its invoice (the place-order saga). */
-    placeOrder: (patientId: string, productType: ProductType, productId: string, quantity: number, idempotencyKey: string) =>
-      api.post<SagaResponse>('/api/v1/sagas/place-order', { patientId, productType, productId, quantity }, { idempotencyKey }),
+    placeOrder: (patientId: string, productType: ProductType, productId: string, quantity: number, idempotencyKey: string, signal?: AbortSignal) =>
+      api.post<SagaResponse>('/api/v1/sagas/place-order', { patientId, productType, productId, quantity }, { idempotencyKey, ...(signal ? { signal } : {}) }),
+
+    getSaga: (id: string, signal?: AbortSignal) =>
+      api.get<SagaResponse>(`/api/v1/sagas/${id}`, signal ? { signal } : {}),
 
     /** Daily revenue of the current month, zero-filled from day 1 through today (HU-24, ADMIN only). */
     salesTimeseries: (signal?: AbortSignal) =>

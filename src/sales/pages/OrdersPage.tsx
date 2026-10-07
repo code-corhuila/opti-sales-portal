@@ -100,7 +100,18 @@ export function OrdersPage({ shell }: { shell: ShellContext }): ReactNode {
   const status = (params.get('status') ?? '') as WorkOrderStatus | '';
   const page = Number(params.get('page') ?? '1') || 1;
   const q = ui.useDebounced(text.trim(), 300);
-  const { state, reload } = ui.useLoad((signal) => api.listOrders({ status, q, page }, signal), [status, q, page]);
+  const { state, reload } = ui.useLoad(async (signal) => {
+    const result = await api.listOrders({ status, q, page }, signal);
+    const patients = new Map<string, string>();
+    await Promise.all([...new Set(result.data.map((order) => order.patientId))].map(async (id) => {
+      try {
+        patients.set(id, (await api.getPatient(id, signal)).fullName);
+      } catch (error) {
+        if (signal.aborted) throw error;
+      }
+    }));
+    return { ...result, data: result.data.map((order) => ({ ...order, patientName: patients.get(order.patientId) })) };
+  }, [status, q, page]);
 
   function update(next: Record<string, string>): void {
     const merged = new URLSearchParams(params);
@@ -115,7 +126,7 @@ export function OrdersPage({ shell }: { shell: ShellContext }): ReactNode {
     <>
       <ui.PageHeader
         title="Órdenes de trabajo"
-        subtitle="Las órdenes se abren desde el flujo de venta (workflow)."
+        subtitle="Gestiona cotizaciones y ventas desde el flujo de trabajo."
         actions={
           shell.can('ADMIN', 'SELLER') ? (
             <Link className="btn" to="new">
@@ -131,6 +142,7 @@ export function OrdersPage({ shell }: { shell: ShellContext }): ReactNode {
           hint="Busca por número de orden (OT-xxxx); no busca por nombre del paciente." />
         <ui.SelectField id="order-status" label="Estado" value={status} placeholder="Todos"
           onChange={(value) => update({ status: value, page: '' })} options={STATUS_OPTIONS} />
+        <button className="btn btn-quiet" type="button" onClick={() => { setText(''); setParams({}, { replace: true }); }}>Limpiar filtros</button>
       </div>
       <ui.DataState
         state={state}
@@ -144,14 +156,17 @@ export function OrdersPage({ shell }: { shell: ShellContext }): ReactNode {
             <div className="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Número</th><th className="num">Total</th><th>Estado</th></tr>
+                  <tr><th>Número</th><th>Paciente</th><th>Fecha</th><th className="num">Total</th><th>Estado</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                   {result.data.map((order) => (
                     <tr key={order.id}>
                       <td><Link to={order.id}>{order.number}</Link></td>
+                      <td><span className="user-cell"><ui.Avatar name={order.patientName ?? 'Paciente'} />{order.patientName ?? 'Paciente no disponible'}</span></td>
+                      <td>{new Date(order.createdAt).toLocaleDateString('es-CO', { timeZone: 'America/Bogota' })}</td>
                       <td className="num">{formatCents(order.totalCents)}</td>
                       <td><ui.Badge tone={STATUS_TONE[order.status]}>{STATUS_LABEL[order.status]}</ui.Badge></td>
+                      <td><Link className="btn btn-quiet" to={order.id}>Ver</Link></td>
                     </tr>
                   ))}
                 </tbody>
