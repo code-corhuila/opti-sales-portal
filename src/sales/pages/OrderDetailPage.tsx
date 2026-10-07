@@ -5,7 +5,7 @@ import { salesApi } from '../api/salesApi';
 import { OrderTimeline } from '../components/OrderTimeline';
 import { PatientHeader } from '../components/PatientHeader';
 import { PaymentForm } from '../components/PaymentForm';
-import { formatCents, INVOICE_STATUS_LABEL, NEXT_STATUS, PAYMENT_METHODS, STATUS_LABEL, STATUS_TONE } from '../model/order';
+import { FAILURE_MESSAGE, formatCents, INVOICE_STATUS_LABEL, NEXT_STATUS, PAYMENT_METHODS, STATUS_LABEL, STATUS_TONE } from '../model/order';
 
 function InvoiceSection({ shell, orderId, version, onChanged }: { shell: ShellContext; orderId: string; version: number; onChanged: () => void }): ReactNode {
   const { ui } = shell;
@@ -63,7 +63,7 @@ function InvoiceBody({ shell, invoiceId, totalCents, paidCents, balanceCents, st
           <>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Fecha</th><th className="num">Valor</th><th>Medio</th><th>Referencia</th></tr></thead>
+                <thead><tr><th>Fecha</th><th className="num">Valor</th><th>Medio</th><th>Referencia</th><th>Comprobante</th></tr></thead>
                 <tbody>
                   {result.data.map((payment) => (
                     <tr key={payment.id}>
@@ -71,6 +71,8 @@ function InvoiceBody({ shell, invoiceId, totalCents, paidCents, balanceCents, st
                       <td className="num">{formatCents(payment.amountCents)}</td>
                       <td>{methodLabel[payment.method] ?? payment.method}</td>
                       <td>{payment.reference ?? '—'}</td>
+                      <td>{payment.gatewayTransactionId?.startsWith('SANDBOX-') ? <><ui.Badge tone="warning">Simulación</ui.Badge><br />{payment.gatewayTransactionId}</> :
+                        payment.gatewayTransactionId ?? 'Registro manual'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -95,6 +97,11 @@ export function OrderDetailPage({ shell }: { shell: ShellContext }): ReactNode {
   const api = useMemo(() => salesApi(shell.api), [shell.api]);
   const [version, setVersion] = useState(0);
   const [pending, setPending] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const cancelKey = useMemo(() => crypto.randomUUID(), [id]);
+  const invoiceState = ui.useLoad((signal) => api.invoiceOf(id, signal), [id, version]);
+  const invoice = invoiceState.state.status === 'ready' ? invoiceState.state.data : null;
+  const canDeliver = invoice?.status === 'PAID' && invoice.balanceCents === 0;
   const { state, reload } = ui.useLoad((signal) => api.getOrder(id, signal), [id, version]);
 
   async function advance(action: 'approve' | 'advance'): Promise<void> {
@@ -106,6 +113,27 @@ export function OrderDetailPage({ shell }: { shell: ShellContext }): ReactNode {
       setVersion((v) => v + 1);
     } catch (error) {
       shell.notify((error as { info?: { userMessage: string } }).info?.userMessage ?? 'No se pudo actualizar la orden.', 'error');
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function cancel(): Promise<void> {
+    if (pending) return;
+    setPending(true);
+    try {
+      const saga = await api.cancel(id, cancelKey);
+      if (saga.status === 'COMPLETED') {
+        shell.notify('Orden cancelada y stock liberado', 'success');
+        setConfirmCancel(false);
+      } else if (saga.failureReason) {
+        shell.notify(FAILURE_MESSAGE[saga.failureReason], 'error');
+      } else {
+        shell.notify('La cancelación sigue en proceso. Actualiza la orden para comprobar su estado.', 'info');
+      }
+      setVersion((v) => v + 1);
+    } catch (error) {
+      shell.notify((error as { info?: { userMessage: string } }).info?.userMessage ?? 'No se pudo cancelar la orden.', 'error');
     } finally {
       setPending(false);
     }
@@ -147,12 +175,25 @@ export function OrderDetailPage({ shell }: { shell: ShellContext }): ReactNode {
                     </button>
                   ) : null}
                   {NEXT_STATUS[order.status] ? (
-                    <button type="button" className="btn" disabled={pending} onClick={() => void advance('advance')}>
+                    <button type="button" className="btn" disabled={pending || (order.status === 'READY' && !canDeliver)} onClick={() => void advance('advance')}>
                       Avanzar a {STATUS_LABEL[NEXT_STATUS[order.status]!]}
                     </button>
                   ) : null}
+                  {['QUOTATION', 'APPROVED'].includes(order.status) ? (
+                    <button type="button" className="btn btn-quiet" disabled={pending || !invoice || invoice.paidCents > 0}
+                      onClick={() => setConfirmCancel(true)}>Cancelar orden</button>
+                  ) : null}
                 </div>
               ) : null}
+              {order.status === 'READY' && !canDeliver ? <p role="status">Para entregar esta orden debes completar el pago de la factura.
+                {invoice ? ` Saldo pendiente: ${formatCents(invoice.balanceCents)}.` : ' Consulta el estado de la factura antes de entregar.'}</p> : null}
+              {['QUOTATION', 'APPROVED'].includes(order.status) && invoice && invoice.paidCents > 0 ?
+                <p>Esta orden tiene abonos. Requiere resolver la devolución antes de cancelarla.</p> : null}
+              {confirmCancel && ['QUOTATION', 'APPROVED'].includes(order.status) ? <div className="state" role="alert">
+                <p>¿Cancelar {order.number}? Se anulará la factura y se devolverá el stock reservado. Esta acción no se puede deshacer.</p>
+                <div className="actions"><button className="btn" disabled={pending} onClick={() => void cancel()}>Confirmar cancelación</button>
+                  <button className="btn btn-quiet" disabled={pending} onClick={() => setConfirmCancel(false)}>Conservar orden</button></div>
+              </div> : null}
             </section>
 
             <section className="card">
