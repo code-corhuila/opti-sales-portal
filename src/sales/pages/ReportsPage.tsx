@@ -1,7 +1,8 @@
 import { useMemo, type ReactNode } from 'react';
 import {
-  Bar, BarChart, Cell, CartesianGrid, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Bar, BarChart, Cell, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
+import { Link, useNavigate } from 'react-router-dom';
 import type { ShellContext } from '../../shell-contract';
 import { salesApi, type StatusCount } from '../api/salesApi';
 import { formatCents, STATUS_LABEL, STATUS_TONE, TONE_COLOR } from '../model/order';
@@ -13,6 +14,7 @@ function dayLabel(date: string): string {
 
 /** Sales by day of the current month: a bar per day, zero-filled (HU-24). */
 function SalesTimeseriesCard({ shell }: { shell: ShellContext }): ReactNode {
+  const navigate = useNavigate();
   const { ui } = shell;
   const api = useMemo(() => salesApi(shell.api), [shell.api]);
   const { state, reload } = ui.useLoad((signal) => api.salesTimeseries(signal), []);
@@ -28,7 +30,8 @@ function SalesTimeseriesCard({ shell }: { shell: ShellContext }): ReactNode {
         emptyHint="Las cifras aparecen cuando se registre la primera venta del mes."
       >
         {(data) => (
-          <ResponsiveContainer width="100%" height={280}>
+          <>
+<ResponsiveContainer width="100%" height={280}>
             <BarChart data={data.map((d) => ({ ...d, day: dayLabel(d.date) }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="day" stroke="var(--text-soft)" fontSize={12} />
@@ -38,9 +41,11 @@ function SalesTimeseriesCard({ shell }: { shell: ShellContext }): ReactNode {
                 labelFormatter={(day) => `Día ${day}`}
                 contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
               />
-              <Bar dataKey="totalCents" name="Ventas" fill={TONE_COLOR.info} radius={[4, 4, 0, 0]} />
+              <Bar onClick={(_row, index) => { const row = data[index]; if (row) navigate(`/sales/reports/orders?date=${row.date}`); }} style={{ cursor: 'pointer' }} dataKey="totalCents" name="Ventas" fill={TONE_COLOR.info} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+<details><summary>Ver ventas por fecha</summary><div className="chart-legend">{data.map((row) => <Link key={row.date} to={`/sales/reports/orders?date=${row.date}`}>{row.date}: {formatCents(row.totalCents)}</Link>)}</div></details>
+</>
         )}
       </ui.DataState>
     </section>
@@ -49,6 +54,7 @@ function SalesTimeseriesCard({ shell }: { shell: ShellContext }): ReactNode {
 
 /** Orders by status: one slice per WorkOrderStatus, reusing the portal's own status colors (HU-24). */
 function OrdersByStatusCard({ shell }: { shell: ShellContext }): ReactNode {
+  const navigate = useNavigate();
   const { ui } = shell;
   const api = useMemo(() => salesApi(shell.api), [shell.api]);
   const { state, reload } = ui.useLoad((signal) => api.ordersByStatus(signal), []);
@@ -64,13 +70,11 @@ function OrdersByStatusCard({ shell }: { shell: ShellContext }): ReactNode {
         emptyHint="Las cifras aparecen cuando se abra la primera orden."
       >
         {(data) => (
-          <ResponsiveContainer width="100%" height={280}>
+          <>
+<ResponsiveContainer width="100%" height={230}>
             <PieChart>
-              <Pie data={data} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={100}
-                label={(props) => {
-                  const { status, count } = props as unknown as StatusCount;
-                  return count > 0 ? `${STATUS_LABEL[status]}: ${count}` : '';
-                }}
+              <Pie onClick={(_row, index) => { const row = data[index]; if (row) navigate(`/sales?status=${row.status}`); }} style={{ cursor: 'pointer' }} data={data} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={100}
+                innerRadius={55}
               >
                 {data.map((row) => (
                   <Cell key={row.status} fill={TONE_COLOR[STATUS_TONE[row.status]]} />
@@ -83,9 +87,17 @@ function OrdersByStatusCard({ shell }: { shell: ShellContext }): ReactNode {
                 }}
                 contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
               />
-              <Legend formatter={(_value, entry) => STATUS_LABEL[(entry.payload as unknown as StatusCount).status]} />
             </PieChart>
           </ResponsiveContainer>
+            <div className="chart-legend" aria-label="Ver órdenes por estado">
+              {data.map((row) => (
+                <Link key={row.status} to={`/sales?status=${row.status}`}>
+                  <span className="chart-swatch" style={{ background: TONE_COLOR[STATUS_TONE[row.status]] }} />
+                  {STATUS_LABEL[row.status]} ({row.count})
+                </Link>
+              ))}
+            </div>
+</>
         )}
       </ui.DataState>
     </section>
