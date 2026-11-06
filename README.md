@@ -23,3 +23,11 @@ branch into another: `merge develop -> qa` and `merge qa -> main` do not exist i
 rule.
 
 Full policy: `00-governance/branching-policy.md` in `library-docs`.
+
+## Factura PDF y pagos de prueba
+
+La ficha de orden/factura descarga el documento interno PDF y advierte que no es una factura fiscal certificada. PSE/tarjeta muestran un SMS **simulado**, su código de prueba, caducidad y límite de intentos; no solicitan teléfonos ni datos bancarios/tarjetas. Las transferencias, Nequi y Daviplata requieren adjunto ficticio PDF/PNG/JPEG hasta 2 MiB, validado antes del envío y nuevamente por la API. Los pagos con `hasReceipt` permiten descarga privada; los registros antiguos siguen visibles.
+
+Requiere la actualización coordinada de `opti-front`, `opti-sales-api`, V020 de `opti-sales-db` y el límite de pagos de `opti-api-gateway`. El código simulado reside en una instancia de la API y se pierde al reiniciar: revisar historial ante respuestas inciertas antes de iniciar otro pago. No hay cobros, proveedores ni SMS reales.
+
+`npm test` y `npm run build`; revisión Chromium con datos ficticios de descarga, OTP, adjunto ausente/tipo inválido/válido. No se modifican reportes HU-24.
