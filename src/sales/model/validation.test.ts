@@ -28,10 +28,9 @@ describe('payment validation', () => {
     expect(validatePayment({ ...EMPTY_PAYMENT, amountPesos: '50', method: '' }, 100).method).toBeDefined();
   });
 
-  it('a Nequi payment needs a valid phone number as the reference', () => {
-    expect(validatePayment({ amountPesos: '50', method: 'NEQUI', reference: '' }, 100).reference).toBeDefined();
-    expect(validatePayment({ amountPesos: '50', method: 'NEQUI', reference: '123' }, 100).reference).toBeDefined();
-    expect(validatePayment({ amountPesos: '50', method: 'NEQUI', reference: '3991111111' }, 100).reference).toBeUndefined();
-    expect(validatePayment({ amountPesos: '50', method: 'CASH', reference: '' }, 100).reference).toBeUndefined();
+  it('manual wallet evidence does not request personal phone numbers', () => {
+    expect(validatePayment({ amountPesos: '1', method: 'NEQUI', reference: 'PRUEBA' }, 100)).toEqual({});
+    expect(validatePayment({ amountPesos: '1', method: 'DAVIPLATA', reference: '' }, 100)).toEqual({});
+    expect(validatePayment({ amountPesos: '1', method: 'UNKNOWN', reference: '' }, 100).method).toBeDefined();
   });
 });
