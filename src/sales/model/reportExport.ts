@@ -30,7 +30,7 @@ export async function reportPdf(report: Report): Promise<ArrayBuffer> {
     body: report.rows.map((row) => row.map((value, i) => formatCell(value, report.columns[i]?.kind))),
     theme: 'striped',
     styles: { fontSize: 9, cellPadding: 3, textColor: [23, 41, 61], overflow: 'linebreak' },
-    headStyles: { fillColor: [9, 107, 107] },
+    headStyles: { fillColor: [9, 107, 107], textColor: [255, 255, 255] },
     columnStyles,
     ...(report.total ? { foot: [[{ content: report.total, colSpan: report.columns.length }]],
       footStyles: { fillColor: [220, 240, 238], textColor: [19, 62, 63] }, showFoot: 'lastPage' as const } : {}),
