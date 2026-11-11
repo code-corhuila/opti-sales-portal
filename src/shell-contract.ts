@@ -32,6 +32,7 @@ export interface ApiErrorInfo {
 }
 
 export interface RequestOptions {
+  responseType?: 'blob';
   signal?: AbortSignal;
   idempotencyKey?: string;
   query?: Record<string, string | number | boolean | null | undefined>;
