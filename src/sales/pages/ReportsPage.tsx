@@ -5,6 +5,8 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import type { ShellContext } from '../../shell-contract';
 import { salesApi, type StatusCount } from '../api/salesApi';
+import { ReportDownload } from '../components/ReportDownload';
+import { reportMoney } from '../model/reportExport';
 import { formatCents, STATUS_LABEL, STATUS_TONE, TONE_COLOR } from '../model/order';
 
 /** `date` arrives as "YYYY-MM-DD"; only the day number is shown on the axis. */
@@ -22,6 +24,7 @@ function SalesTimeseriesCard({ shell }: { shell: ShellContext }): ReactNode {
   return (
     <section className="card">
       <h2>Ventas por día (mes actual)</h2>
+      <p>Valor de las órdenes no canceladas por fecha UTC. No representa dinero cobrado.</p>
       <ui.DataState
         state={state}
         onRetry={reload}
@@ -31,6 +34,15 @@ function SalesTimeseriesCard({ shell }: { shell: ShellContext }): ReactNode {
       >
         {(data) => (
           <>
+            <ReportDownload report={{
+              title: 'Ventas por día',
+              fileName: `optiview-ventas-${data[0]?.date.slice(0, 7) ?? 'mes-actual'}`,
+              sheetName: 'Ventas por día',
+              description: `Período: ${data[0]?.date.slice(0, 7) ?? 'mes actual'} (UTC). Valor de las órdenes no canceladas; no equivale a dinero cobrado. Montos en COP.`,
+              columns: [{ title: 'Fecha (UTC)' }, { title: 'Valor de órdenes (COP)', kind: 'money' }],
+              rows: data.map((row) => [row.date, row.totalCents]),
+              total: `Valor total de órdenes: ${reportMoney(data.reduce((sum, row) => sum + row.totalCents, 0))}`,
+            }} />
 <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data.map((d) => ({ ...d, day: dayLabel(d.date) }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -71,6 +83,15 @@ function OrdersByStatusCard({ shell }: { shell: ShellContext }): ReactNode {
       >
         {(data) => (
           <>
+            <ReportDownload report={{
+              title: 'Órdenes por estado',
+              fileName: 'optiview-ordenes-por-estado',
+              sheetName: 'Órdenes por estado',
+              description: 'Conteo de órdenes por su estado actual, incluidas las canceladas. No se limita al mes actual.',
+              columns: [{ title: 'Estado' }, { title: 'Órdenes', kind: 'number' }],
+              rows: data.map((row) => [STATUS_LABEL[row.status], row.count]),
+              total: `Total de órdenes: ${data.reduce((sum, row) => sum + row.count, 0)}`,
+            }} />
 <ResponsiveContainer width="100%" height={230}>
             <PieChart>
               <Pie onClick={(_row, index) => { const row = data[index]; if (row) navigate(`/sales?status=${row.status}`); }} style={{ cursor: 'pointer' }} data={data} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={100}

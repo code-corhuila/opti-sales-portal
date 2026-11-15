@@ -10,8 +10,6 @@ export interface PaymentDraft {
 
 export const EMPTY_PAYMENT: PaymentDraft = { amountPesos: '', method: '', reference: '' };
 
-const NEQUI_PHONE = /^3\d{9}$/;
-
 /** A payment must be positive and never above the outstanding balance (checked here to save a round trip). */
 export function validatePayment(draft: PaymentDraft, balanceCents: number): Errors {
   const errors: Errors = {};
@@ -21,15 +19,11 @@ export function validatePayment(draft: PaymentDraft, balanceCents: number): Erro
   } else if (amount > balanceCents) {
     errors.amountPesos = 'No puede ser mayor al saldo pendiente';
   }
-  if (!draft.method) {
+  if (!['CASH', 'CARD', 'TRANSFER', 'PSE', 'NEQUI', 'DAVIPLATA', 'OTHER'].includes(draft.method)) {
     errors.method = 'Elige el medio de pago';
   }
   if (draft.reference.trim().length > 100) {
     errors.reference = 'Máximo 100 caracteres';
-  }
-  // Nequi is charged through the real gateway (when configured) using this number to reach the customer's app.
-  if (draft.method === 'NEQUI' && !NEQUI_PHONE.test(draft.reference.trim())) {
-    errors.reference = 'Escribe el celular Nequi del cliente: 10 dígitos, empieza por 3';
   }
   return errors;
 }

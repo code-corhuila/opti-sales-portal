@@ -96,8 +96,12 @@ export function salesApi(api: ApiClient) {
     payments: (invoiceId: string, page: number, signal?: AbortSignal) =>
       api.get<Page<Payment>>(`/api/v1/invoices/${invoiceId}/payments`, { query: { page, limit: 5 }, ...(signal ? { signal } : {}) }),
 
-    pay: (invoiceId: string, amountCents: number, method: string, reference: string | null, idempotencyKey: string) =>
-      api.post<{ id: string }>(`/api/v1/invoices/${invoiceId}/payments`, { amountCents, method, reference }, { idempotencyKey }),
+    challenge: (invoiceId: string, amountCents: number, method: string, reference: string | null) =>
+      api.post<{ id: string; testCode: string; expiresAt: string; mode: string }>(`/api/v1/invoices/${invoiceId}/payment-challenges`, { amountCents, method, reference }),
+
+    pay: (invoiceId: string, amountCents: number, method: string, reference: string | null, idempotencyKey: string,
+      proof: { challengeId?: string; otp?: string; receipt?: { contentType: string; base64: string } } = {}) =>
+      api.post<{ id: string }>(`/api/v1/invoices/${invoiceId}/payments`, { amountCents, method, reference, ...proof }, { idempotencyKey }),
 
     /** Up to 5 active patients matching the text, to pick one for a sale (HU: register a sale). */
     searchPatients: (q: string, signal?: AbortSignal) =>

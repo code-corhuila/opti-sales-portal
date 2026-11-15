@@ -4,6 +4,7 @@ import type { ShellContext } from '../../shell-contract';
 import { salesApi } from '../api/salesApi';
 import { OrderTimeline } from '../components/OrderTimeline';
 import { PatientHeader } from '../components/PatientHeader';
+import { DownloadButton } from '../components/DownloadButton';
 import { PaymentForm } from '../components/PaymentForm';
 import { FAILURE_MESSAGE, formatCents, INVOICE_STATUS_LABEL, NEXT_STATUS, PAYMENT_METHODS, STATUS_LABEL, STATUS_TONE } from '../model/order';
 
@@ -47,6 +48,8 @@ function InvoiceBody({ shell, invoiceId, totalCents, paidCents, balanceCents, st
 
   return (
     <>
+      <DownloadButton shell={shell} path={`/api/v1/invoices/${invoiceId}/pdf`} filename={`factura-${invoiceId}.pdf`} label="Descargar factura PDF" />
+      <p>Documento interno de OptiView. No es una factura fiscal certificada.</p>
       <dl className="facts">
         <dt>Total</dt>
         <dd>{formatCents(totalCents)}</dd>
@@ -72,7 +75,7 @@ function InvoiceBody({ shell, invoiceId, totalCents, paidCents, balanceCents, st
                       <td>{methodLabel[payment.method] ?? payment.method}</td>
                       <td>{payment.reference ?? '—'}</td>
                       <td>{payment.gatewayTransactionId?.startsWith('SANDBOX-') ? <><ui.Badge tone="warning">Simulación</ui.Badge><br />{payment.gatewayTransactionId}</> :
-                        payment.gatewayTransactionId ?? 'Registro manual'}</td>
+                        payment.hasReceipt ? <DownloadButton shell={shell} path={`/api/v1/invoices/${invoiceId}/payments/${payment.id}/receipt`} filename={`comprobante-${payment.id}`} label="Descargar comprobante" /> : payment.gatewayTransactionId ?? 'Registro manual (sin adjunto histórico)' }</td>
                     </tr>
                   ))}
                 </tbody>

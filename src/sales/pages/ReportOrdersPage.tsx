@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import type { ShellContext } from '../../shell-contract';
 import { salesApi } from '../api/salesApi';
+import { ReportDownload } from '../components/ReportDownload';
+import { reportMoney } from '../model/reportExport';
 import { formatCents, STATUS_LABEL, STATUS_TONE } from '../model/order';
 
 export function ReportOrdersPage({ shell }: { shell: ShellContext }) {
@@ -16,6 +18,16 @@ export function ReportOrdersPage({ shell }: { shell: ShellContext }) {
     <ui.DataState state={state} onRetry={reload}>
       {(orders) => <section className="card">
         <h2>{orders.length} órdenes · {formatCents(orders.reduce((total, order) => total + order.totalCents, 0))}</h2>
+        {orders.length > 0 && <ReportDownload report={{
+          title: `Órdenes del ${date}`,
+          fileName: `optiview-detalle-ventas-${date}`,
+          sheetName: 'Detalle de órdenes',
+          description: 'Fecha de creación en UTC. Se excluyen las órdenes canceladas. El total representa valor de órdenes, no dinero cobrado.',
+          columns: [{ title: 'Orden' }, { title: 'Fecha y hora (UTC)' }, { title: 'Estado' }, { title: 'Valor (COP)', kind: 'money' }],
+          rows: orders.map((order) => [order.number, new Date(order.createdAt).toISOString().slice(0, 19).replace('T', ' '),
+            STATUS_LABEL[order.status], order.totalCents]),
+          total: `Valor total de órdenes: ${reportMoney(orders.reduce((sum, order) => sum + order.totalCents, 0))}`,
+        }} />}
         {orders.length === 0 ? <p>No hay ventas para esta fecha.</p> : <div className="table-wrap"><table>
           <thead><tr><th>Orden</th><th>Fecha</th><th>Estado</th><th className="num">Total</th><th>Detalle</th></tr></thead>
           <tbody>{orders.map((order) => <tr key={order.id}>

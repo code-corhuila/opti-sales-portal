@@ -51,6 +51,7 @@ export interface Invoice {
 }
 
 export interface Payment {
+  hasReceipt?: boolean;
   id: string;
   invoiceId: string;
   amountCents: number;
